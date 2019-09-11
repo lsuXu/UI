@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ProgressBarView">
+        <attr name="bar_unreach_color" format="color"/>
+        <attr name="bar_reach_color" format="color"/>
+        <attr name="bar_size" format="dimension"/>
+        <attr name="bar_circle_color" format="color"/>
+        <attr name="bar_circle_radius" format="dimension"/>
+    </declare-styleable>
+
+</resources>
