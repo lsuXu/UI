@@ -10,6 +10,9 @@
     <ui.xuxp.com.view.ProgressBarView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        app:orientation="horizontal"
+        app:bar_size="15dp"
+        app:bar_circle_radius="15dp"
         android:max="30"
         android:progress="10"/>
 

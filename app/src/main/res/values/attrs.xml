@@ -6,6 +6,10 @@
         <attr name="bar_size" format="dimension"/>
         <attr name="bar_circle_color" format="color"/>
         <attr name="bar_circle_radius" format="dimension"/>
+        <attr name="orientation" format="enum">
+            <enum name="horizontal" value="0"/>
+            <enum name="vertical" value="1"/>
+        </attr>
     </declare-styleable>
 
 </resources>
