@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.MotionEvent;
 import android.widget.ProgressBar;
@@ -35,8 +36,8 @@ public class ProgressBarView extends ProgressBar {
     //字体颜色
     protected int textColor = Color.WHITE ;
 
-    //视图实际的长度（进度条方向），绘制进度条的开始边界/结束边界
-    protected float realSize ,drawBorderStart,drawBorderEnd;
+    //视图实际的长度（进度条方向）,进度条长度，绘制进度条的开始边界/结束边界
+    protected float viewWidth,viewHeight, realSize ,lineSize ,lineStart,lineEnd ;
 
     //圆的半径
     protected int circleRadius = dp2px(3);
@@ -79,6 +80,7 @@ public class ProgressBarView extends ProgressBar {
         mPaint.setStrokeWidth(barSize);
         mPaint.setStrokeCap(Paint.Cap.ROUND);
         mPaint.setAntiAlias(true);
+        //若需要显示文字信息，则进行画笔的初始化
         if(showHint){
             textPaint = new Paint();
             textPaint.setColor(textColor);
@@ -90,22 +92,22 @@ public class ProgressBarView extends ProgressBar {
 
     @Override
     protected synchronized void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int width , height ;
         if(orientation == 0){
-            width = MeasureSpec.getSize(widthMeasureSpec);
-            height = measureSize(heightMeasureSpec);
-            realSize = width - getPaddingLeft() - getPaddingRight();
+            viewWidth = MeasureSpec.getSize(widthMeasureSpec);
+            viewHeight = measureSize(heightMeasureSpec);
+            realSize = viewWidth - getPaddingLeft() - getPaddingRight();
         }else{
-            width = measureSize(widthMeasureSpec);
-            height = MeasureSpec.getSize(heightMeasureSpec);
-            realSize = height - getPaddingBottom() - getPaddingTop();
+            viewWidth = measureSize(widthMeasureSpec);
+            viewHeight = MeasureSpec.getSize(heightMeasureSpec);
+            realSize = viewHeight - getPaddingBottom() - getPaddingTop();
         }
 
-        setMeasuredDimension(width,height);
+        setMeasuredDimension((int)viewWidth,(int)viewHeight);
 
         //计算实际的绘制边界
-        drawBorderStart = circleRadius ;
-        drawBorderEnd = realSize - circleRadius;
+        lineStart = circleRadius ;
+        lineEnd = realSize - circleRadius;
+        lineSize = realSize - circleRadius * 2 ;
     }
 
 
@@ -113,8 +115,8 @@ public class ProgressBarView extends ProgressBar {
     protected synchronized void onDraw(Canvas canvas) {
         //保存画布
         canvas.save();
+        //移动画布,令画布的进度条位于x/y轴上
         if(orientation == 0) {
-            //移动画布
             canvas.translate(getPaddingLeft(), getHeight() / 2);
         }else{
             canvas.translate(getWidth()/2,getPaddingTop());
@@ -129,30 +131,30 @@ public class ProgressBarView extends ProgressBar {
         float start,end ;
         if(orientation == 0){//水平绘制
             //绘制未加载进度
-            start = progressSize < drawBorderStart ? drawBorderStart:progressSize;
-            end = drawBorderEnd ;
+            start = lineBoundaryValid(progressSize);
+            end = lineEnd ;
             if ( end > start) {
                 canvas.drawLine(start, 0, end, 0, mPaint);
             }
         }else{//垂直绘制
-            start = drawBorderStart ;
-            end = realSize - progressSize > drawBorderEnd ? drawBorderEnd:realSize - progressSize;
-            if(start < end)
+            start = lineStart ;
+            end = lineBoundaryValid(realSize - progressSize);
+            if(end > start)
                 canvas.drawLine(0,start,0,end,mPaint);
         }
 
         //绘制已加载进度
         mPaint.setColor(isEnabled()?reachedColor:disableColor);
         if(orientation == 0){
-            start = drawBorderStart ;
-            end = progressSize > drawBorderEnd ? drawBorderEnd : progressSize;
+            start = lineStart ;
+            end = lineBoundaryValid(progressSize);
             if(end > start){//水平绘制
                 canvas.drawLine(start, 0, end, 0, mPaint);
             }
         }else{
-            end = realSize - progressSize < drawBorderStart ? drawBorderStart : realSize - progressSize;
-            start = drawBorderEnd ;
-            if(start> end)//垂直绘制
+            start = lineBoundaryValid(realSize - progressSize) ;
+            end = lineEnd ;
+            if(end > start)//垂直绘制
                 canvas.drawLine(0,start,0,end,mPaint);
         }
 
@@ -160,15 +162,12 @@ public class ProgressBarView extends ProgressBar {
         //绘制圆
         mPaint.setColor(isEnabled()?circleColor:disableColor);
 
-        float centerOffset = progressSize;
-        if(centerOffset <drawBorderStart){
-            centerOffset = circleRadius ;
-        }else if(centerOffset > drawBorderEnd){
-            centerOffset = drawBorderEnd ;
-        }
+        float centerOffset ;
+
         //获取进度，随后绘制
         String progress = String.valueOf(getProgress());
         if(orientation == 0) {
+            centerOffset = lineBoundaryValid(progressSize);
             canvas.drawCircle(centerOffset, 0, circleRadius, mPaint);
             if(showHint){
                 //测量待绘制的文本的宽度
@@ -178,7 +177,7 @@ public class ProgressBarView extends ProgressBar {
                 canvas.drawText(progress,centerOffset - textWidth/2,circleRadius - textHeight/2,textPaint);
             }
         }else {
-            centerOffset = realSize -centerOffset;
+            centerOffset = lineBoundaryValid(realSize - progressSize);
             canvas.drawCircle(0,  centerOffset, circleRadius, mPaint);
             if(showHint){
                 //测量待绘制的文本的宽度
@@ -186,7 +185,6 @@ public class ProgressBarView extends ProgressBar {
                 int textHeight = (int) (textPaint.descent() - textPaint.ascent());
                 //绘制进度文本
                 canvas.drawText(progress,- textWidth/2,centerOffset + textHeight/4,textPaint);
-
             }
         }
 
@@ -196,11 +194,6 @@ public class ProgressBarView extends ProgressBar {
     }
 
 
-    /**
-     * 测量视图的值
-     * @param measureSpec
-     * @return
-     */
     private int measureSize(int measureSpec) {
         int result = 0;
         //获取高度模式
@@ -240,11 +233,24 @@ public class ProgressBarView extends ProgressBar {
                 int p ;
                 float offset;
                 if(orientation == 0){
+                    Log.i(TAG,String.format("x = event.getX() = %s , realSize = %s , viewWidth = %s",event.getX(),realSize , viewWidth));
                     offset = event.getX();
+                    /*if(offset <= getPaddingLeft()){
+                        offset = 0 ;
+                    }else if(offset >= viewWidth - getPaddingRight()){
+                        offset = realSize ;
+                    }*/
                     p = Math.round((offset/realSize)*getMax());
 
                 }else{
-                    offset = realSize - event.getY();
+                    Log.i(TAG,String.format("x = event.getY() = %s , realSize = %s , viewHeight = %s",event.getY(),realSize , viewHeight));
+                    offset = getHeight() - event.getY();
+
+                    /*if(offset <= getPaddingBottom()){
+                        offset = 0 ;
+                    }else if(offset >= viewHeight - getPaddingTop()){
+                        offset = realSize ;
+                    }*/
                     p = Math.round((offset/realSize)*getMax());
                 }
                 //若进度没有发生变化，不更新视图
@@ -255,6 +261,16 @@ public class ProgressBarView extends ProgressBar {
                 break;
         }
         return true;
+    }
+
+    private static final String TAG = ProgressBarView.class.getSimpleName();
+    /**
+     * 边界检测，若值超出了进度条绘制的边界，则进行校正
+     * @param value value
+     * @return  valid value
+     */
+    protected float lineBoundaryValid(float value){
+        return value < lineStart ? lineStart : value > lineEnd ? lineEnd : value ;
     }
 
     protected int dp2px(int dip) {
