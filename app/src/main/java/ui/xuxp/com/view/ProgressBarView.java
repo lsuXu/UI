@@ -17,8 +17,8 @@ public class ProgressBarView extends ProgressBar {
     //方向,0标识水平，1标识垂直
     protected int orientation = 0 ;
 
-    //进度条的高度（线条的粗细）
-    protected int barSize = dp2px(2);
+    //进度条的粗细（线条的粗细）
+    protected int barSize = dp2px(4);
 
     //进度条部分未达到的颜色
     protected int unReachedColor = Color.parseColor("#eeeeee");
@@ -29,14 +29,29 @@ public class ProgressBarView extends ProgressBar {
     //圆的颜色
     protected int circleColor = Color.parseColor("#ff3333");
 
+    //禁用时的颜色
+    private int disableColor = Color.parseColor("#dddddd");
+
+    //字体颜色
+    protected int textColor = Color.WHITE ;
+
     //视图实际的长度（进度条方向），绘制进度条的开始边界/结束边界
     protected float realSize ,drawBorderStart,drawBorderEnd;
 
     //圆的半径
     protected int circleRadius = dp2px(3);
 
-    //画笔
+    //文字大小
+    protected int textSize = sp2px(12);
+
+    //进度条相关画笔
     private Paint mPaint ;
+
+    //文字画笔
+    private Paint textPaint ;
+
+    //是否显示进度
+    private boolean showHint ;
 
     public ProgressBarView(Context context) {
         this(context,null);
@@ -54,10 +69,22 @@ public class ProgressBarView extends ProgressBar {
         reachedColor = ta.getColor(R.styleable.ProgressBarView_bar_reach_color,reachedColor);
         circleColor = ta.getColor(R.styleable.ProgressBarView_bar_circle_color,circleColor);
         circleRadius = (int) ta.getDimension(R.styleable.ProgressBarView_bar_circle_radius,circleRadius);
-        orientation = ta.getInt(R.styleable.ProgressBarView_orientation,orientation);
+        orientation = ta.getInt(R.styleable.ProgressBarView_android_orientation,orientation);
+        showHint = ta.getBoolean(R.styleable.ProgressBarView_bar_show_hint,false);
+        textColor = ta.getColor(R.styleable.ProgressBarView_android_textColor,textColor);
+        textSize = (int) ta.getDimension(R.styleable.ProgressBarView_android_textSize,textSize);
+        disableColor = ta.getColor(R.styleable.ProgressBarView_bar_disable_color,disableColor);
         ta.recycle();
         mPaint = new Paint();
+        mPaint.setStrokeWidth(barSize);
         mPaint.setStrokeCap(Paint.Cap.ROUND);
+        mPaint.setAntiAlias(true);
+        if(showHint){
+            textPaint = new Paint();
+            textPaint.setColor(textColor);
+            textPaint.setTextSize(textSize);
+            circleRadius = Math.max(circleRadius,textSize);
+        }
     }
 
 
@@ -90,7 +117,6 @@ public class ProgressBarView extends ProgressBar {
             //移动画布
             canvas.translate(getPaddingLeft(), getHeight() / 2);
         }else{
-            canvas.rotate(180,getWidth()/2,getHeight()/2);
             canvas.translate(getWidth()/2,getPaddingTop());
         }
         //计算已加载进度在整个控件宽度的占比
@@ -99,47 +125,71 @@ public class ProgressBarView extends ProgressBar {
         float progressSize = radio * realSize;
 
         //绘制未加载进度
-        float start = progressSize < drawBorderStart ? drawBorderStart:progressSize;
-        float end = drawBorderEnd ;
-        if ( end > start) {
-            mPaint.setColor(unReachedColor);
-            mPaint.setStrokeWidth(barSize);
-            mPaint.setStrokeCap(Paint.Cap.ROUND);
-            mPaint.setAntiAlias(true);
-            if(orientation == 0)
+        mPaint.setColor(isEnabled() ? unReachedColor:disableColor);
+        float start,end ;
+        if(orientation == 0){//水平绘制
+            //绘制未加载进度
+            start = progressSize < drawBorderStart ? drawBorderStart:progressSize;
+            end = drawBorderEnd ;
+            if ( end > start) {
                 canvas.drawLine(start, 0, end, 0, mPaint);
-            else
+            }
+        }else{//垂直绘制
+            start = drawBorderStart ;
+            end = realSize - progressSize > drawBorderEnd ? drawBorderEnd:realSize - progressSize;
+            if(start < end)
                 canvas.drawLine(0,start,0,end,mPaint);
         }
 
-        //计算左边进度结束的位置 如果结束的位置小于0就不需要绘制左边的进度
-        start = drawBorderStart ;
-        end = progressSize > drawBorderEnd ? drawBorderEnd : progressSize;
         //绘制已加载进度
-        if (end > start) {
-            mPaint.setColor(reachedColor);
-            mPaint.setStrokeWidth(barSize);
-            mPaint.setStrokeCap(Paint.Cap.ROUND);
-            mPaint.setAntiAlias(true);
-            if(orientation == 0)
+        mPaint.setColor(isEnabled()?reachedColor:disableColor);
+        if(orientation == 0){
+            start = drawBorderStart ;
+            end = progressSize > drawBorderEnd ? drawBorderEnd : progressSize;
+            if(end > start){//水平绘制
                 canvas.drawLine(start, 0, end, 0, mPaint);
-            else
+            }
+        }else{
+            end = realSize - progressSize < drawBorderStart ? drawBorderStart : realSize - progressSize;
+            start = drawBorderEnd ;
+            if(start> end)//垂直绘制
                 canvas.drawLine(0,start,0,end,mPaint);
         }
+
 
         //绘制圆
-        mPaint.setColor(circleColor);
+        mPaint.setColor(isEnabled()?circleColor:disableColor);
 
         float centerOffset = progressSize;
-        if(centerOffset <circleRadius){
+        if(centerOffset <drawBorderStart){
             centerOffset = circleRadius ;
-        }else if(centerOffset > realSize - circleRadius){
-            centerOffset = realSize - circleRadius ;
+        }else if(centerOffset > drawBorderEnd){
+            centerOffset = drawBorderEnd ;
         }
-        if(orientation == 0)
-            canvas.drawCircle(centerOffset,0,circleRadius,mPaint);
-        else
-            canvas.drawCircle(0,centerOffset,circleRadius,mPaint);
+        //获取进度，随后绘制
+        String progress = String.valueOf(getProgress());
+        if(orientation == 0) {
+            canvas.drawCircle(centerOffset, 0, circleRadius, mPaint);
+            if(showHint){
+                //测量待绘制的文本的宽度
+                int textWidth = (int) textPaint.measureText(progress);
+                int textHeight = (int) (textPaint.descent() - textPaint.ascent());
+                //绘制进度文本
+                canvas.drawText(progress,centerOffset - textWidth/2,circleRadius - textHeight/2,textPaint);
+            }
+        }else {
+            centerOffset = realSize -centerOffset;
+            canvas.drawCircle(0,  centerOffset, circleRadius, mPaint);
+            if(showHint){
+                //测量待绘制的文本的宽度
+                int textWidth = (int) textPaint.measureText(progress);
+                int textHeight = (int) (textPaint.descent() - textPaint.ascent());
+                //绘制进度文本
+                canvas.drawText(progress,- textWidth/2,centerOffset + textHeight/4,textPaint);
+
+            }
+        }
+
         //重置画布
         canvas.restore();
 
@@ -177,6 +227,12 @@ public class ProgressBarView extends ProgressBar {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+
+        //若视图不可用，不处理触摸事件
+        if(!isEnabled()){
+            return false;
+        }
+
         switch(event.getAction()){
             case MotionEvent.ACTION_MOVE:
             case MotionEvent.ACTION_UP:
@@ -188,8 +244,8 @@ public class ProgressBarView extends ProgressBar {
                     p = Math.round((offset/realSize)*getMax());
 
                 }else{
-                    offset = event.getY();
-                    p = Math.round((1 - offset/realSize)*getMax());
+                    offset = realSize - event.getY();
+                    p = Math.round((offset/realSize)*getMax());
                 }
                 //若进度没有发生变化，不更新视图
                 if(getProgress() == p){
@@ -198,7 +254,6 @@ public class ProgressBarView extends ProgressBar {
                 setProgress(p);
                 break;
         }
-        invalidate();
         return true;
     }
 

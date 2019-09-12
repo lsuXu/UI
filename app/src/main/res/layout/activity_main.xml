@@ -5,15 +5,29 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="30dp"
+    android:orientation="vertical"
     tools:context=".MainActivity">
 
     <ui.xuxp.com.view.ProgressBarView
+        android:id="@+id/bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:orientation="horizontal"
-        app:bar_size="15dp"
-        app:bar_circle_radius="15dp"
-        android:max="30"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        app:bar_show_hint="true"
+        android:max="100"
         android:progress="10"/>
+
+    <Button
+        android:id="@+id/enable"
+        android:text="启用"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/disable"
+        android:text="禁用"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
 
 </LinearLayout>
