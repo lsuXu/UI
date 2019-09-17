@@ -62,8 +62,16 @@ public class ProgressBarView extends ProgressBar {
         this(context, attrs,0);
     }
 
+    /**
+     * 构造方法
+     * @param context
+     * @param attrs 属性集，通过将布局文件中的属性解析出来，以key-value的形式存储起来
+     * @param defStyleAttr
+     */
     public ProgressBarView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+
+        //获取属性
         TypedArray ta = context.obtainStyledAttributes(attrs,R.styleable.ProgressBarView);
         barSize = (int) ta.getDimension(R.styleable.ProgressBarView_bar_size,barSize);
         unReachedColor = ta.getColor(R.styleable.ProgressBarView_bar_unreach_color, unReachedColor);
@@ -194,23 +202,35 @@ public class ProgressBarView extends ProgressBar {
     }
 
 
+    /**
+     *
+     * @param measureSpec 由View的onMeasure方法回调得到的measureSpec
+     * @return
+     */
     private int measureSize(int measureSpec) {
+        //预设结果输出
         int result = 0;
-        //获取高度模式
+        //获取度量模式
         int mode = MeasureSpec.getMode(measureSpec);
-        //获取宽度模式
+        //获取尺寸大小
         int size = MeasureSpec.getSize(measureSpec);
-        if (mode == MeasureSpec.EXACTLY) {
-            //精准模式 用户设置为 比如80dp  match_parent fill_parent
+
+        if (mode == MeasureSpec.EXACTLY) {//若度量模式为精确测量，宽度尺寸大小即为最终结果大小
+            //用户设置为 比如80dp  match_parent fill_parent
             result = size;
         } else if(orientation == 0){//水平，测
-            // paddingTop+paddingBottom+ progressbar高度和圆直径的最大值
+            // 上下边距 + Math.max(进度条粗细，圆的直径)
             result = getPaddingTop() + getPaddingBottom() + Math.max(barSize, Math.abs(circleRadius * 2));
+
+            //若模式设定为MeasureSpec.AT_MOST，则自定义控件的宽度应该受到父布局的限定
             if (mode == MeasureSpec.AT_MOST) {
                 result = Math.min(result, size);
             }
         }else{
+            //左右边距 + Math.max(进度条粗细，圆的直径)
             result = getPaddingLeft() + getPaddingRight() + Math.max(barSize, Math.abs(circleRadius * 2));
+
+            //若模式设定为MeasureSpec.AT_MOST，则自定义控件的宽度应该受到父布局的限定
             if (mode == MeasureSpec.AT_MOST) {
                 result = Math.min(result, size);
             }
@@ -233,7 +253,7 @@ public class ProgressBarView extends ProgressBar {
                 int p ;
                 float offset;
                 if(orientation == 0){
-                    Log.i(TAG,String.format("x = event.getX() = %s , realSize = %s , viewWidth = %s",event.getX(),realSize , viewWidth));
+//                    Log.i(TAG,String.format("x = event.getX() = %s , realSize = %s , viewWidth = %s",event.getX(),realSize , viewWidth));
                     offset = event.getX();
                     /*if(offset <= getPaddingLeft()){
                         offset = 0 ;
@@ -243,7 +263,7 @@ public class ProgressBarView extends ProgressBar {
                     p = Math.round((offset/realSize)*getMax());
 
                 }else{
-                    Log.i(TAG,String.format("x = event.getY() = %s , realSize = %s , viewHeight = %s",event.getY(),realSize , viewHeight));
+//                    Log.i(TAG,String.format("x = event.getY() = %s , realSize = %s , viewHeight = %s",event.getY(),realSize , viewHeight));
                     offset = getHeight() - event.getY();
 
                     /*if(offset <= getPaddingBottom()){

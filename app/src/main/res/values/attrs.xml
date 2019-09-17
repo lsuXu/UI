@@ -12,12 +12,4 @@
         <attr name="android:textColor"/>
         <attr name="android:textSize"/>
     </declare-styleable>
-    
-    <declare-styleable name="CaseView">
-        <attr name="case_background" format="reference"/>
-        <attr name="case_background_color" format="color"/>
-        <attr name="case_center" format="boolean"/>
-        <attr name="case_size" format="dimension"/>
-    </declare-styleable>
-
 </resources>
